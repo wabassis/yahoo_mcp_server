@@ -1,6 +1,14 @@
-"""Servidor MCP para integração de agentes (Hermes) com Yahoo Finance."""
+"""Servidor MCP para integração de agentes (Hermes) com Yahoo Finance.
+
+Este módulo concentra:
+1) Registro das ferramentas MCP expostas para o agente.
+2) Validação de autenticação por API key.
+3) Bootstrap de métricas Prometheus e inicialização do servidor MCP.
+"""
 
 from __future__ import annotations
+
+import logging
 
 from mcp.server.fastmcp import FastMCP
 from prometheus_client import start_http_server
@@ -15,10 +23,28 @@ mcp = FastMCP(
     streamable_http_path=settings.mcp_path,
 )
 service = YahooFinanceService()
+_metrics_started = False
+
+
+def _configure_runtime() -> None:
+    """Aplica configuração de runtime para execução via python e via ASGI."""
+    global _metrics_started
+
+    mcp.settings.host = settings.mcp_host
+    mcp.settings.port = settings.mcp_port
+    mcp.settings.streamable_http_path = settings.mcp_path
+
+    if not _metrics_started:
+        start_http_server(settings.metrics_port, addr=settings.metrics_host)
+        _metrics_started = True
 
 
 def _assert_api_key(api_key: str) -> None:
-    """Valida chave do cliente para proteger o servidor."""
+    """Valida chave de acesso do cliente.
+
+    Observação: o Yahoo Finance (via yfinance) não exige token nativo,
+    porém este servidor MCP exige APP_API_KEY para restringir acesso.
+    """
     if not settings.app_api_key:
         raise ValueError("APP_API_KEY não configurada no ambiente (.env).")
     if api_key != settings.app_api_key:
@@ -54,7 +80,7 @@ def yahoo_quote(symbol: str, api_key: str) -> dict:
 
 
 if __name__ == "__main__":
-    start_http_server(settings.metrics_port, addr=settings.metrics_host)
+    _configure_runtime()
 
     if settings.mcp_transport == "stdio":
         mcp.run(transport="stdio")

@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   yahoo-mcp:
     build: .
@@ -11,8 +9,17 @@ services:
       - MCP_HOST=0.0.0.0
       - MCP_PORT=8000
       - MCP_PATH=/mcp
+    # Importante: use o app ASGI exportado (app.main:app), não app.main:mcp.
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/mcp', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     ports:
       - "8000:8000" # servidor MCP HTTP
       - "9100:9100" # métricas prometheus
@@ -21,6 +28,11 @@ services:
     image: redis:7-alpine
     container_name: yahoo-finance-redis
     command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     ports:
       - "6379:6379"
 
@@ -32,4 +44,5 @@ services:
     ports:
       - "9090:9090"
     depends_on:
-      - yahoo-mcp
+      yahoo-mcp:
+        condition: service_healthy

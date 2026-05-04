@@ -11,6 +11,8 @@ from dataclasses import dataclass
 
 from dotenv import load_dotenv
 
+# Carrega variáveis do arquivo `.env` quando presente.
+# Em produção, prefira injetar variáveis por secret manager/orquestrador.
 load_dotenv()
 
 
