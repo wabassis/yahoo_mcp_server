@@ -16,14 +16,12 @@ from prometheus_client import start_http_server
 from app.config import settings
 from app.service import YahooFinanceService
 
-# Logger padronizado para facilitar troubleshooting em containers.
-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-logger = logging.getLogger(__name__)
-
-# Instância do servidor MCP (camada de protocolo e tools).
-mcp = FastMCP("yahoo-finance-mcp")
-
-# Serviço de domínio para acesso Yahoo Finance (com cache/telemetria).
+mcp = FastMCP(
+    "yahoo-finance-mcp",
+    host=settings.mcp_host,
+    port=settings.mcp_port,
+    streamable_http_path=settings.mcp_path,
+)
 service = YahooFinanceService()
 _metrics_started = False
 
@@ -87,10 +85,4 @@ if __name__ == "__main__":
     if settings.mcp_transport == "stdio":
         mcp.run(transport="stdio")
     else:
-        mcp.run(transport="streamable-http", mount_path=settings.mcp_path)
-
-
-# Compatibilidade com execução via uvicorn/gunicorn, por exemplo:
-# `uvicorn app.main:app --host 0.0.0.0 --port 8000`
-_configure_runtime()
-app = mcp.streamable_http_app()
+        mcp.run(transport="streamable-http")
