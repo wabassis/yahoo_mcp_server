@@ -25,6 +25,20 @@ mcp = FastMCP("yahoo-finance-mcp")
 
 # Serviço de domínio para acesso Yahoo Finance (com cache/telemetria).
 service = YahooFinanceService()
+_metrics_started = False
+
+
+def _configure_runtime() -> None:
+    """Aplica configuração de runtime para execução via python e via ASGI."""
+    global _metrics_started
+
+    mcp.settings.host = settings.mcp_host
+    mcp.settings.port = settings.mcp_port
+    mcp.settings.streamable_http_path = settings.mcp_path
+
+    if not _metrics_started:
+        start_http_server(settings.metrics_port, addr=settings.metrics_host)
+        _metrics_started = True
 
 
 def _assert_api_key(api_key: str) -> None:
@@ -68,9 +82,15 @@ def yahoo_quote(symbol: str, api_key: str) -> dict:
 
 
 if __name__ == "__main__":
-    start_http_server(settings.metrics_port, addr=settings.metrics_host)
+    _configure_runtime()
 
     if settings.mcp_transport == "stdio":
         mcp.run(transport="stdio")
     else:
         mcp.run(transport="streamable-http", mount_path=settings.mcp_path)
+
+
+# Compatibilidade com execução via uvicorn/gunicorn, por exemplo:
+# `uvicorn app.main:app --host 0.0.0.0 --port 8000`
+_configure_runtime()
+app = mcp.streamable_http_app()
