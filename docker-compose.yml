@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  yahoo-mcp:
+    build: .
+    container_name: yahoo-finance-mcp
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    ports:
+      - "9100:9100" # métricas prometheus
+
+  redis:
+    image: redis:7-alpine
+    container_name: yahoo-finance-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: yahoo-finance-prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    depends_on:
+      - yahoo-mcp
