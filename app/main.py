@@ -41,15 +41,17 @@ def yahoo_balance_sheet(symbol: str, api_key: str) -> dict:
     return service.get_balance_sheet(symbol)
 
 
+@mcp.tool()
+def yahoo_quote(symbol: str, api_key: str) -> dict:
+    """Consulta a cotação intradiária mais recente do ticker."""
+    _assert_api_key(api_key)
+    return service.get_quote(symbol)
+
+
 if __name__ == "__main__":
     start_http_server(settings.metrics_port, addr=settings.metrics_host)
 
     if settings.mcp_transport == "stdio":
         mcp.run(transport="stdio")
     else:
-        mcp.run(
-            transport="streamable-http",
-            host=settings.mcp_host,
-            port=settings.mcp_port,
-            path=settings.mcp_path,
-        )
+        mcp.run(transport="streamable-http", mount_path=settings.mcp_path)
