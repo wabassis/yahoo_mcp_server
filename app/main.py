@@ -41,72 +41,36 @@ def _assert_api_key(api_key: str) -> None:
 
 @mcp.tool()
 def yahoo_cash_flow(symbol: str, api_key: str) -> dict:
-    """Retorna cash flow anual do ticker informado.
-
-    Args:
-        symbol: Código do ativo (ex.: AAPL, MSFT, PETR4.SA).
-        api_key: Token de autenticação do cliente MCP.
-    """
+    """Consulta cash flow anual do ticker informado."""
     _assert_api_key(api_key)
     return service.get_cash_flow(symbol)
 
 
 @mcp.tool()
 def yahoo_income_statement(symbol: str, api_key: str) -> dict:
-    """Retorna income statement anual do ticker informado."""
+    """Consulta demonstrativo de resultados anual do ticker."""
     _assert_api_key(api_key)
     return service.get_income_statement(symbol)
 
 
 @mcp.tool()
 def yahoo_balance_sheet(symbol: str, api_key: str) -> dict:
-    """Retorna balance sheet anual do ticker informado."""
+    """Consulta balanço patrimonial anual do ticker."""
     _assert_api_key(api_key)
     return service.get_balance_sheet(symbol)
 
 
-def _run_mcp_server() -> None:
-    """Inicializa o servidor MCP no transporte configurado.
-
-    Importante: para evitar erro de incompatibilidade de parâmetros entre versões
-    do pacote `mcp`, o modo `streamable-http` usa apenas `host` e `port`.
-    O path pode ser roteado externamente por proxy reverso se necessário.
-    """
-    # Normaliza o valor para evitar falhas por caixa alta/minúscula.
-    transport = settings.mcp_transport.strip().lower()
-
-    # Modo local padrão para integração de agentes em stdio.
-    if transport == "stdio":
-        logger.info("Iniciando MCP em modo stdio")
-        mcp.run(transport="stdio")
-        return
-
-    # Modo de servidor para docker/k8s (HTTP).
-    if transport == "streamable-http":
-        logger.info(
-            "Iniciando MCP em modo streamable-http em %s:%s",
-            settings.mcp_host,
-            settings.mcp_port,
-        )
-        # OBS: não passamos `path` para evitar TypeError em versões do SDK
-        # que não aceitam esse argumento em `run()`.
-        mcp.run(
-            transport="streamable-http",
-            host=settings.mcp_host,
-            port=settings.mcp_port,
-        )
-        return
-
-    # Falha explícita para transporte inválido (erro de configuração).
-    raise ValueError(
-        f"MCP_TRANSPORT inválido: {settings.mcp_transport}. Use 'stdio' ou 'streamable-http'."
-    )
+@mcp.tool()
+def yahoo_quote(symbol: str, api_key: str) -> dict:
+    """Consulta a cotação intradiária mais recente do ticker."""
+    _assert_api_key(api_key)
+    return service.get_quote(symbol)
 
 
 if __name__ == "__main__":
-    # Exporta endpoint /metrics para Prometheus em porta dedicada.
     start_http_server(settings.metrics_port, addr=settings.metrics_host)
-    logger.info("Métricas Prometheus em %s:%s", settings.metrics_host, settings.metrics_port)
 
-    # Inicializa servidor MCP com logs de startup para diagnóstico.
-    _run_mcp_server()
+    if settings.mcp_transport == "stdio":
+        mcp.run(transport="stdio")
+    else:
+        mcp.run(transport="streamable-http", mount_path=settings.mcp_path)
