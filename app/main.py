@@ -8,8 +8,6 @@ Este módulo concentra:
 
 from __future__ import annotations
 
-import logging
-
 from mcp.server.fastmcp import FastMCP
 from prometheus_client import start_http_server
 
@@ -37,6 +35,13 @@ def _configure_runtime() -> None:
     if not _metrics_started:
         start_http_server(settings.metrics_port, addr=settings.metrics_host)
         _metrics_started = True
+
+
+# Configuração aplicada também durante import para execução ASGI (uvicorn app.main:app).
+_configure_runtime()
+
+# App ASGI usado no docker-compose. O FastMCP expõe esse adaptador HTTP.
+app = mcp.streamable_http_app()
 
 
 def _assert_api_key(api_key: str) -> None:
@@ -80,8 +85,6 @@ def yahoo_quote(symbol: str, api_key: str) -> dict:
 
 
 if __name__ == "__main__":
-    _configure_runtime()
-
     if settings.mcp_transport == "stdio":
         mcp.run(transport="stdio")
     else:
