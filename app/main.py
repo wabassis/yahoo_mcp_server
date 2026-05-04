@@ -8,19 +8,12 @@ from prometheus_client import start_http_server
 from app.config import settings
 from app.service import YahooFinanceService
 
-# Instância do servidor MCP que expõe ferramentas para o agente Hermes.
 mcp = FastMCP("yahoo-finance-mcp")
-
-# Serviço reutilizável para chamadas Yahoo + cache.
 service = YahooFinanceService()
 
 
 def _assert_api_key(api_key: str) -> None:
-    """Valida chave do cliente para proteger o servidor.
-
-    Mesmo que o Yahoo não exija token no yfinance, proteger o MCP evita
-    uso indevido por clientes não autorizados.
-    """
+    """Valida chave do cliente para proteger o servidor."""
     if not settings.app_api_key:
         raise ValueError("APP_API_KEY não configurada no ambiente (.env).")
     if api_key != settings.app_api_key:
@@ -49,8 +42,14 @@ def yahoo_balance_sheet(symbol: str, api_key: str) -> dict:
 
 
 if __name__ == "__main__":
-    # Exporta métricas para Prometheus em porta separada.
     start_http_server(settings.metrics_port, addr=settings.metrics_host)
 
-    # Executa servidor MCP em stdio (compatível com integração local de agentes).
-    mcp.run(transport="stdio")
+    if settings.mcp_transport == "stdio":
+        mcp.run(transport="stdio")
+    else:
+        mcp.run(
+            transport="streamable-http",
+            host=settings.mcp_host,
+            port=settings.mcp_port,
+            path=settings.mcp_path,
+        )

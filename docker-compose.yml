@@ -6,9 +6,15 @@ services:
     container_name: yahoo-finance-mcp
     env_file:
       - .env
+    environment:
+      - MCP_TRANSPORT=streamable-http
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+      - MCP_PATH=/mcp
     depends_on:
       - redis
     ports:
+      - "8000:8000" # servidor MCP HTTP
       - "9100:9100" # métricas prometheus
 
   redis:
