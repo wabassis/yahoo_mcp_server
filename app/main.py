@@ -1,6 +1,14 @@
-"""Servidor MCP para integração de agentes (Hermes) com Yahoo Finance."""
+"""Servidor MCP para integração de agentes (Hermes) com Yahoo Finance.
+
+Este módulo concentra:
+1) Registro das ferramentas MCP expostas para o agente.
+2) Validação de autenticação por API key.
+3) Bootstrap de métricas Prometheus e inicialização do servidor MCP.
+"""
 
 from __future__ import annotations
+
+import logging
 
 from mcp.server.fastmcp import FastMCP
 from prometheus_client import start_http_server
@@ -8,12 +16,23 @@ from prometheus_client import start_http_server
 from app.config import settings
 from app.service import YahooFinanceService
 
+# Logger padronizado para facilitar troubleshooting em containers.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger(__name__)
+
+# Instância do servidor MCP (camada de protocolo e tools).
 mcp = FastMCP("yahoo-finance-mcp")
+
+# Serviço de domínio para acesso Yahoo Finance (com cache/telemetria).
 service = YahooFinanceService()
 
 
 def _assert_api_key(api_key: str) -> None:
-    """Valida chave do cliente para proteger o servidor."""
+    """Valida chave de acesso do cliente.
+
+    Observação: o Yahoo Finance (via yfinance) não exige token nativo,
+    porém este servidor MCP exige APP_API_KEY para restringir acesso.
+    """
     if not settings.app_api_key:
         raise ValueError("APP_API_KEY não configurada no ambiente (.env).")
     if api_key != settings.app_api_key:
