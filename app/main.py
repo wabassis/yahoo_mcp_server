@@ -8,7 +8,12 @@ from prometheus_client import start_http_server
 from app.config import settings
 from app.service import YahooFinanceService
 
-mcp = FastMCP("yahoo-finance-mcp")
+mcp = FastMCP(
+    "yahoo-finance-mcp",
+    host=settings.mcp_host,
+    port=settings.mcp_port,
+    streamable_http_path=settings.mcp_path,
+)
 service = YahooFinanceService()
 
 
@@ -54,4 +59,4 @@ if __name__ == "__main__":
     if settings.mcp_transport == "stdio":
         mcp.run(transport="stdio")
     else:
-        mcp.run(transport="streamable-http", mount_path=settings.mcp_path)
+        mcp.run(transport="streamable-http")
